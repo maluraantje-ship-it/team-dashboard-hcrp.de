@@ -35,7 +35,7 @@
       color: white;
       box-sizing: border-box;
     }
-    .field { display: none; } /* Dynamische Felder verstecken */
+    .field { display: none; }
     .buttons {
       display: flex;
       gap: 15px;
@@ -67,7 +67,6 @@
     }
     .success { color: #43b581; }
     .error   { color: #f04747; }
-    #authSection { text-align: center; margin-bottom: 20px; }
   </style>
 </head>
 <body>
@@ -75,13 +74,7 @@
 <div class="container">
   <h1>Abmeldung & Team-Log System</h1>
 
-  <div id="authSection" style="display: none;">
-    <p>Du musst dich mit Discord anmelden, um fortzufahren.</p>
-    <button id="loginBtn">Mit Discord anmelden</button>
-  </div>
-
-  <form id="logForm" style="display: none;">
-    <!-- Das Formular aus vorher (Dropdown, Felder, etc.) -->
+  <form id="logForm">
     <label for="aktion">Aktion auswählen:</label>
     <select id="aktion" required>
       <option value="">-- Wähle eine Aktion --</option>
@@ -153,16 +146,7 @@
   const form = document.getElementById('logForm');
   const statusDiv = document.getElementById('status');
   const aktionSelect = document.getElementById('aktion');
-  const authSection = document.getElementById('authSection');
-  const loginBtn = document.getElementById('loginBtn');
 
-  // Deine Discord Client ID (aus Developer Portal)
-  const clientId = 'DEINE_CLIENT_ID_HIER_EINFÜGEN';
-  const guildId = 'DEINE_GUILD_SERVER_ID_HIER_EINFÜGEN'; // Server-ID
-  const roleId = '1470004099129933829'; // High-Team Rolle
-  const redirectUri = window.location.href; // Aktuelle Seite als Redirect
-
-  // Felder wie vorher
   const fields = {
     grund: document.getElementById('grundField'),
     datum: document.getElementById('datumField'),
@@ -175,70 +159,163 @@
     alteRolle: document.getElementById('alteRolleField')
   };
 
-  // Felder anzeigen wie vorher
+  // Felder dynamisch ein-/ausblenden
   aktionSelect.addEventListener('change', (e) => {
-    // ... der Code aus vorher für Felder anzeigen ...
+    const aktion = e.target.value;
+
+    // Alle Felder ausblenden + required entfernen
+    Object.values(fields).forEach(field => {
+      field.style.display = 'none';
+      const input = field.querySelector('input, textarea');
+      if (input) input.required = false;
+    });
+
+    if (!aktion) return;
+
+    // Gemeinsame Felder (fast immer)
+    fields.grund.style.display = 'block';
+    fields.grund.querySelector('textarea').required = true;
+    fields.datum.style.display = 'block';
+    fields.datum.querySelector('input').required = true;
+    fields.von.style.display = 'block';
+    fields.von.querySelector('input').required = true;
+
+    switch (aktion) {
+      case 'abmeldung':
+        fields.wer.style.display = 'block';
+        fields.wer.querySelector('label').textContent = 'Dein Name / Nick:';
+        fields.wer.querySelector('input').required = true;
+        fields.ab.style.display = 'block';
+        fields.ab.querySelector('input').required = true;
+        fields.bis.style.display = 'block';
+        fields.bis.querySelector('input').required = true;
+        break;
+
+      case 'teamwarn':
+      case 'einstellung':
+        fields.wer.style.display = 'block';
+        fields.wer.querySelector('label').textContent = 'Wer:';
+        fields.wer.querySelector('input').required = true;
+        break;
+
+      case 'teamkick':
+        fields.wer.style.display = 'block';
+        fields.wer.querySelector('label').textContent = 'Wer:';
+        fields.wer.querySelector('input').required = true;
+        fields.abgesprochen.style.display = 'block';
+        fields.abgesprochen.querySelector('input').required = true;
+        break;
+
+      case 'uprank':
+      case 'downrank':
+        fields.wer.style.display = 'block';
+        fields.wer.querySelector('label').textContent = 'Wer:';
+        fields.wer.querySelector('input').required = true;
+        fields.neueRolle.style.display = 'block';
+        fields.neueRolle.querySelector('input').required = true;
+        fields.alteRolle.style.display = 'block';
+        fields.alteRolle.querySelector('input').required = true;
+        break;
+    }
   });
 
-  // Auth-Check beim Laden
-  const urlParams = new URLSearchParams(window.location.search);
-  const code = urlParams.get('code');
-  if (code) {
-    getAccessToken(code);
-  } else {
-    checkAuth();
-  }
+  // Formular absenden
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
 
-  // Funktion zum Token holen (braucht Backend!)
-  async function getAccessToken(code) {
-    statusDiv.textContent = '⏳ Authentifizierung läuft...';
+    const aktion = aktionSelect.value;
+    if (!aktion) {
+      statusDiv.textContent = '❌ Bitte eine Aktion auswählen!';
+      statusDiv.className = 'error';
+      return;
+    }
+
+    // Werte holen
+    const grund       = fields.grund.querySelector('textarea').value.trim()       || '–';
+    const datum       = fields.datum.querySelector('input').value                || new Date().toISOString().split('T')[0];
+    const von         = fields.von.querySelector('input').value.trim()           || '–';
+    const wer         = fields.wer.querySelector('input')?.value.trim()          || '–';
+    const ab          = fields.ab.querySelector('input')?.value                  || '–';
+    const bis         = fields.bis.querySelector('input')?.value                || '–';
+    const abgesprochen = fields.abgesprochen.querySelector('input')?.value.trim() || '–';
+    const neueRolle   = fields.neueRolle.querySelector('input')?.value.trim()    || '–';
+    const alteRolle   = fields.alteRolle.querySelector('input')?.value.trim()    || '–';
+
+    // Embed-Felder zusammenstellen
+    let title = aktion.charAt(0).toUpperCase() + aktion.slice(1);
+    let fieldsArray = [
+      { name: 'Grund', value: grund, inline: false },
+      { name: 'Datum', value: datum, inline: true },
+      { name: 'Von',   value: von,   inline: true }
+    ];
+
+    if (aktion !== 'abmeldung') {
+      fieldsArray.push({ name: 'Wer', value: wer, inline: true });
+    } else {
+      fieldsArray[2] = { name: 'Name', value: wer, inline: true }; // "Von" → "Name" bei Abmeldung
+      fieldsArray.push({ name: 'Ab wann', value: ab,  inline: true });
+      fieldsArray.push({ name: 'Bis wann', value: bis, inline: true });
+    }
+
+    if (aktion === 'teamkick') {
+      fieldsArray.push({ name: 'Abgesprochen mit', value: abgesprochen, inline: false });
+    }
+
+    if (aktion === 'uprank' || aktion === 'downrank') {
+      fieldsArray.push({ name: 'Neue Rolle', value: neueRolle, inline: true });
+      fieldsArray.push({ name: 'Alte Rolle', value: alteRolle, inline: true });
+    }
+
+    const message = {
+      embeds: [{
+        title: `Neue ${title}`,
+        color: 0x5865f2,
+        fields: fieldsArray,
+        footer: { text: `Gesendet am ${new Date().toLocaleString('de-DE')}` },
+        timestamp: new Date().toISOString()
+      }]
+    };
+
+    // ←←← HIER DEINE WEBHOOK-URLs EINFÜGEN ←←←
+    const abmeldungWebhook = 'https://discord.com/api/webhooks/DEINE_ABMELDUNG_WEBHOOK_HIER'; // z. B. für Abmeldungen
+    const logWebhook       = 'https://discord.com/api/webhooks/1472317894162383032/SpCZxD5Y2c7fn8BzEymHkJUlyu-bsGkZAdF91OjzBP5ZryrPdnEqYyftXOF5ddkaI9aJ';
+
+    statusDiv.textContent = '⏳ Wird gesendet...';
+    statusDiv.className = '';
+
     try {
-      // Hier müsste ein Backend-Aufruf sein, z. B. fetch('/api/get-token', { method: 'POST', body: JSON.stringify({code}) })
-      // Für Demo annehmen, dass wir Token haben und prüfen
-      // In echt: Sende code an deinen Server, der den Token tauscht und Rollen prüft
-      const accessToken = 'BEISPIEL_TOKEN'; // Placeholder – in echt von Backend
-      const hasRole = await checkRole(accessToken);
-      if (hasRole) {
-        localStorage.setItem('discord_access', 'valid');
-        window.location.search = ''; // Code aus URL entfernen
-        checkAuth();
+      let mainResponse;
+
+      // Abmeldung → an Abmeldung-Channel
+      if (aktion === 'abmeldung') {
+        mainResponse = await fetch(abmeldungWebhook, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(message)
+        });
+      }
+
+      // Alle Aktionen → an Log-Channel
+      const logResponse = await fetch(logWebhook, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(message)
+      });
+
+      if (logResponse.ok && (!mainResponse || mainResponse.ok)) {
+        statusDiv.textContent = '✅ Erfolgreich gesendet!';
+        statusDiv.className = 'success';
+        form.reset();
+        aktionSelect.dispatchEvent(new Event('change')); // Felder zurücksetzen
       } else {
-        statusDiv.textContent = '❌ Kein Zugriff – falsche Rolle';
-        statusDiv.className = 'error';
+        const errText = await (mainResponse || logResponse).text();
+        throw new Error(`Discord Fehler: ${(mainResponse || logResponse).status} – ${errText}`);
       }
     } catch (err) {
-      statusDiv.textContent = '❌ Auth-Fehler';
+      console.error(err);
+      statusDiv.textContent = '❌ ' + err.message;
       statusDiv.className = 'error';
     }
-  }
-
-  async function checkRole(accessToken) {
-    const response = await fetch(`https://discord.com/api/users/@me/guilds/${guildId}/member`, {
-      headers: { Authorization: `Bearer ${accessToken}` }
-    });
-    const member = await response.json();
-    return member.roles.includes(roleId);
-  }
-
-  function checkAuth() {
-    if (localStorage.getItem('discord_access') === 'valid') {
-      authSection.style.display = 'none';
-      form.style.display = 'block';
-    } else {
-      authSection.style.display = 'block';
-      form.style.display = 'none';
-    }
-  }
-
-  loginBtn.addEventListener('click', () => {
-    const scope = 'identify guilds guilds.members.read';
-    const url = `https://discord.com/oauth2/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}`;
-    window.location.href = url;
-  });
-
-  // Submit-Handler wie vorher
-  form.addEventListener('submit', async (e) => {
-    // ... der Code aus vorher für Submit ...
   });
 </script>
 
