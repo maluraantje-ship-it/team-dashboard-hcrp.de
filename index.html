@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Abmeldung</title>
+  <title>Abmeldung & Team-Log System</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -21,12 +21,12 @@
       padding: 30px;
       border-radius: 12px;
       width: 100%;
-      max-width: 500px;
+      max-width: 600px;
       box-shadow: 0 8px 30px rgba(0,0,0,0.5);
     }
     h1 { text-align: center; color: #7289da; }
     label { display: block; margin: 15px 0 5px; font-weight: bold; }
-    input, textarea {
+    input, textarea, select {
       width: 100%;
       padding: 10px;
       border: 1px solid #202225;
@@ -35,6 +35,7 @@
       color: white;
       box-sizing: border-box;
     }
+    .field { display: none; } /* Dynamische Felder verstecken */
     .buttons {
       display: flex;
       gap: 15px;
@@ -71,20 +72,66 @@
 <body>
 
 <div class="container">
-  <h1>Abmeldung</h1>
+  <h1>Abmeldung & Team-Log System</h1>
 
-  <form id="abmeldungForm">
-    <label for="name">Dein Name / Nick:</label>
-    <input type="text" id="name" required>
+  <form id="logForm">
+    <label for="aktion">Aktion auswählen:</label>
+    <select id="aktion" required>
+      <option value="">-- Wähle eine Aktion --</option>
+      <option value="abmeldung">Abmeldung</option>
+      <option value="teamwarn">Teamwarn</option>
+      <option value="teamkick">Teamkick</option>
+      <option value="einstellung">Einstellung</option>
+      <option value="uprank">Uprank</option>
+      <option value="downrank">Downrank</option>
+    </select>
 
-    <label for="grund">Grund:</label>
-    <textarea id="grund" rows="4" required></textarea>
+    <!-- Gemeinsame Felder -->
+    <div id="grundField" class="field">
+      <label for="grund">Grund:</label>
+      <textarea id="grund" rows="4"></textarea>
+    </div>
 
-    <label for="ab">Ab wann:</label>
-    <input type="date" id="ab" required>
+    <div id="datumField" class="field">
+      <label for="datum">Datum:</label>
+      <input type="date" id="datum">
+    </div>
 
-    <label for="bis">Bis wann:</label>
-    <input type="date" id="bis" required>
+    <div id="werField" class="field">
+      <label for="wer">Wer (User / Nick):</label>
+      <input type="text" id="wer">
+    </div>
+
+    <div id="vonField" class="field">
+      <label for="von">Von (Moderator):</label>
+      <input type="text" id="von">
+    </div>
+
+    <!-- Spezifische Felder -->
+    <div id="abField" class="field">
+      <label for="ab">Ab wann:</label>
+      <input type="date" id="ab">
+    </div>
+
+    <div id="bisField" class="field">
+      <label for="bis">Bis wann:</label>
+      <input type="date" id="bis">
+    </div>
+
+    <div id="abgesprochenField" class="field">
+      <label for="abgesprochen">Abgesprochen mit:</label>
+      <input type="text" id="abgesprochen">
+    </div>
+
+    <div id="neueRolleField" class="field">
+      <label for="neueRolle">Neue Rolle:</label>
+      <input type="text" id="neueRolle">
+    </div>
+
+    <div id="alteRolleField" class="field">
+      <label for="alteRolle">Alte Rolle:</label>
+      <input type="text" id="alteRolle">
+    </div>
 
     <div class="buttons">
       <button type="submit">Absenden</button>
@@ -96,59 +143,171 @@
 </div>
 
 <script>
-  const form = document.getElementById('abmeldungForm');
+  const form = document.getElementById('logForm');
   const statusDiv = document.getElementById('status');
+  const aktionSelect = document.getElementById('aktion');
 
+  // Felder per ID
+  const fields = {
+    grund: document.getElementById('grundField'),
+    datum: document.getElementById('datumField'),
+    wer: document.getElementById('werField'),
+    von: document.getElementById('vonField'),
+    ab: document.getElementById('abField'),
+    bis: document.getElementById('bisField'),
+    abgesprochen: document.getElementById('abgesprochenField'),
+    neueRolle: document.getElementById('neueRolleField'),
+    alteRolle: document.getElementById('alteRolleField')
+  };
+
+  // Zeige Felder basierend auf Aktion
+  aktionSelect.addEventListener('change', (e) => {
+    const aktion = e.target.value;
+
+    // Alle Felder verstecken und required entfernen
+    Object.values(fields).forEach(field => {
+      field.style.display = 'none';
+      field.querySelector('input, textarea').required = false;
+    });
+
+    if (!aktion) return;
+
+    // Gemeinsame Felder für alle (außer Abmeldung hat Name statt Wer)
+    fields.grund.style.display = 'block';
+    fields.grund.querySelector('textarea').required = true;
+    fields.datum.style.display = 'block';
+    fields.datum.querySelector('input').required = true;
+    fields.von.style.display = 'block';
+    fields.von.querySelector('input').required = true;
+
+    switch (aktion) {
+      case 'abmeldung':
+        fields.wer.style.display = 'block'; // Als "Name"
+        fields.wer.querySelector('label').textContent = 'Dein Name / Nick:';
+        fields.wer.querySelector('input').required = true;
+        fields.ab.style.display = 'block';
+        fields.ab.querySelector('input').required = true;
+        fields.bis.style.display = 'block';
+        fields.bis.querySelector('input').required = true;
+        break;
+      case 'teamwarn':
+      case 'einstellung':
+        fields.wer.style.display = 'block';
+        fields.wer.querySelector('label').textContent = 'Wer:';
+        fields.wer.querySelector('input').required = true;
+        break;
+      case 'teamkick':
+        fields.wer.style.display = 'block';
+        fields.wer.querySelector('label').textContent = 'Wer:';
+        fields.wer.querySelector('input').required = true;
+        fields.abgesprochen.style.display = 'block';
+        fields.abgesprochen.querySelector('input').required = true;
+        break;
+      case 'uprank':
+      case 'downrank':
+        fields.wer.style.display = 'block';
+        fields.wer.querySelector('label').textContent = 'Wer:';
+        fields.wer.querySelector('input').required = true;
+        fields.neueRolle.style.display = 'block';
+        fields.neueRolle.querySelector('input').required = true;
+        fields.alteRolle.style.display = 'block';
+        fields.alteRolle.querySelector('input').required = true;
+        break;
+    }
+  });
+
+  // Submit-Handler
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    const name  = document.getElementById('name').value.trim();
-    const grund = document.getElementById('grund').value.trim();
-    const ab    = document.getElementById('ab').value;
-    const bis   = document.getElementById('bis').value;
-
-    if (!name || !grund || !ab || !bis) {
-      statusDiv.textContent = '❌ Bitte alle Felder ausfüllen!';
+    const aktion = aktionSelect.value;
+    if (!aktion) {
+      statusDiv.textContent = '❌ Bitte eine Aktion auswählen!';
       statusDiv.className = 'error';
       return;
     }
 
+    // Werte holen (trimmen wo nötig)
+    const grund = fields.grund.querySelector('textarea').value.trim() || '–';
+    const datum = fields.datum.querySelector('input').value || new Date().toISOString().split('T')[0];
+    const von = fields.von.querySelector('input').value.trim() || '–';
+    const wer = fields.wer.querySelector('input')?.value.trim() || '–';
+    const ab = fields.ab.querySelector('input')?.value || '–';
+    const bis = fields.bis.querySelector('input')?.value || '–';
+    const abgesprochen = fields.abgesprochen.querySelector('input')?.value.trim() || '–';
+    const neueRolle = fields.neueRolle.querySelector('input')?.value.trim() || '–';
+    const alteRolle = fields.alteRolle.querySelector('input')?.value.trim() || '–';
+
+    // Embed aufbauen
+    let title = aktion.charAt(0).toUpperCase() + aktion.slice(1);
+    let fieldsArray = [
+      { name: 'Grund', value: grund, inline: false },
+      { name: 'Datum', value: datum, inline: true },
+      { name: 'Von', value: von, inline: true }
+    ];
+
+    if (aktion !== 'abmeldung') {
+      fieldsArray.push({ name: 'Wer', value: wer, inline: true });
+    } else {
+      fieldsArray.push({ name: 'Name', value: wer, inline: true });
+      fieldsArray.push({ name: 'Ab wann', value: ab, inline: true });
+      fieldsArray.push({ name: 'Bis wann', value: bis, inline: true });
+    }
+
+    if (aktion === 'teamkick') {
+      fieldsArray.push({ name: 'Abgesprochen mit', value: abgesprochen, inline: false });
+    }
+
+    if (aktion === 'uprank' || aktion === 'downrank') {
+      fieldsArray.push({ name: 'Neue Rolle', value: neueRolle, inline: true });
+      fieldsArray.push({ name: 'Alte Rolle', value: alteRolle, inline: true });
+    }
+
     const message = {
       embeds: [{
-        title: "Neue Abmeldung",
-        color: 0x5865f2,  // Discord-Blau
-        fields: [
-          { name: "Name", value: name || "–", inline: true },
-          { name: "Grund", value: grund || "–", inline: false },
-          { name: "Zeitraum", value: `**Ab:** ${ab}  →  **Bis:** ${bis}`, inline: false }
-        ],
-        footer: { text: "Gesendet am " + new Date().toLocaleString('de-DE') },
+        title: `Neue ${title}`,
+        color: 0x5865f2,
+        fields: fieldsArray,
+        footer: { text: `Gesendet am ${new Date().toLocaleString('de-DE')}` },
         timestamp: new Date().toISOString()
       }]
     };
+
+    // Webhooks definieren
+    const abmeldungWebhook = 'https://discord.com/api/webhooks/DEINE_ABMELDUNG_WEBHOOK_URL_HIER'; // Ersetze mit dem für Abmeldung-Channel (1467907265486000251)
+    const logWebhook = 'https://discord.com/api/webhooks/1472317894162383032/SpCZxD5Y2c7fn8BzEymHkJUlyu-bsGkZAdF91OjzBP5ZryrPdnEqYyftXOF5ddkaI9aJ'; // Dein gegebener für Log-Channel (1466082649775935518)
 
     statusDiv.textContent = '⏳ Wird gesendet...';
     statusDiv.className = '';
 
     try {
-      const response = await fetch('https://discord.com/api/webhooks/1472275897082970324/ElC0QmewSHCtb6aycREkKzFD9OFZ0xZY5JwZPVZ0DkFa-oFryMg0xWDvDqveyuPyPR2t', {
+      // An Abmeldung-Channel senden (wenn Aktion Abmeldung)
+      if (aktion === 'abmeldung') {
+        await fetch(abmeldungWebhook, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(message)
+        });
+      }
+
+      // Immer an Log-Channel senden
+      const logResponse = await fetch(logWebhook, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(message)
       });
 
-      if (response.ok) {  // 200-299 → Erfolg (Discord sendet oft 204 No Content)
+      if (logResponse.ok) {
         statusDiv.textContent = '✅ Erfolgreich gesendet!';
         statusDiv.className = 'success';
         form.reset();
+        aktionSelect.dispatchEvent(new Event('change')); // Felder resetten
       } else {
-        const errorText = await response.text();  // ← das zeigt Discord-Fehlermeldung!
-        throw new Error(`Discord Fehler: ${response.status} - ${errorText}`);
+        const errorText = await logResponse.text();
+        throw new Error(`Discord Fehler: ${logResponse.status} - ${errorText}`);
       }
     } catch (err) {
-      console.error(err);  // Schau in Browser-Konsole (F12) für Details!
+      console.error(err);
       statusDiv.textContent = '❌ ' + err.message;
       statusDiv.className = 'error';
     }
