@@ -102,40 +102,54 @@
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    const name  = document.getElementById('name').value;
-    const grund = document.getElementById('grund').value;
+    const name  = document.getElementById('name').value.trim();
+    const grund = document.getElementById('grund').value.trim();
     const ab    = document.getElementById('ab').value;
     const bis   = document.getElementById('bis').value;
+
+    if (!name || !grund || !ab || !bis) {
+      statusDiv.textContent = '❌ Bitte alle Felder ausfüllen!';
+      statusDiv.className = 'error';
+      return;
+    }
 
     const message = {
       embeds: [{
         title: "Neue Abmeldung",
-        color: 0x5865f2,
+        color: 0x5865f2,  // Discord-Blau
         fields: [
-          { name: "Name", value: name, inline: true },
-          { name: "Grund", value: grund, inline: false },
-          { name: "Zeitraum", value: `Ab: ${ab || '?'}  →  Bis: ${bis || '?'}` }
+          { name: "Name", value: name || "–", inline: true },
+          { name: "Grund", value: grund || "–", inline: false },
+          { name: "Zeitraum", value: `**Ab:** ${ab}  →  **Bis:** ${bis}`, inline: false }
         ],
+        footer: { text: "Gesendet am " + new Date().toLocaleString('de-DE') },
         timestamp: new Date().toISOString()
       }]
     };
 
+    statusDiv.textContent = '⏳ Wird gesendet...';
+    statusDiv.className = '';
+
     try {
       const response = await fetch('DEINE_WEBHOOK_URL_HIER_EINFÜGEN', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify(message)
       });
 
-      if (response.ok) {
+      if (response.ok) {  // 200-299 → Erfolg (Discord sendet oft 204 No Content)
         statusDiv.textContent = '✅ Erfolgreich gesendet!';
         statusDiv.className = 'success';
         form.reset();
       } else {
-        throw new Error('Fehler beim Senden');
+        const errorText = await response.text();  // ← das zeigt Discord-Fehlermeldung!
+        throw new Error(`Discord Fehler: ${response.status} - ${errorText}`);
       }
     } catch (err) {
-      statusDiv.textContent = '❌ Fehler: ' + err.message;
+      console.error(err);  // Schau in Browser-Konsole (F12) für Details!
+      statusDiv.textContent = '❌ ' + err.message;
       statusDiv.className = 'error';
     }
   });
